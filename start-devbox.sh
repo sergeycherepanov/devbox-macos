@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -e
+trap "{ exit 130; }" SIGINT
+# set -x
 # List constants
 xdebug_port=9001
 current_folder="$(pwd)"
@@ -20,33 +23,54 @@ SET='\033[0m'
 
 #Prepare system, Installing Brew
 prepare_system () {
-if [ ! -f  /usr/local/bin/docker ]; then
+
+which docker > /dev/null || {
   echo -e "$RED Docker is not installed! $SET"
   echo -e "$GREEN Please download and install $SET"
   echo -e "$GREEN https://download.docker.com/mac/stable/Docker.dmg $SET"
   exit 0
-fi
-
-if [ ! -f  /usr/local/bin/unison ]; then
-  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
-  brew install python
-  brew install unison
-  brew install eugenmayer/dockersync/unox
-  brew install openssl
-  sudo easy_install pip
-  sudo chmod +x /usr/local/bin/unison-fsmonitor
-  sudo pip install macfsevents
-fi
-
-if [ ! -f  /usr/local/bin/composer ]
-then
-  brew install composer
-  composer install
-else
-  composer install
-fi
 }
 
+which brew > /dev/null || {
+  echo -e "$RED Homebrew is not installed! $SET"
+  echo -e "Trying to install homebrew..."
+  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+}
+
+brew list | grep '^python$' > /dev/null || {
+    brew install python
+}
+
+brew list | grep '^\(openssl\|openssl@1\.[0-9]\{1,\}\)$' > /dev/null || {
+    brew install openssl
+}
+
+which pip > /dev/null || {
+  sudo easy_install pip
+}
+
+brew list | grep '^unison$' > /dev/null || {
+    brew install unison
+}
+
+brew list | grep '^unox$' > /dev/null || {
+    brew install eugenmayer/dockersync/unox
+}
+
+[[ -x "$(brew --prefix)/bin/unison-fsmonitor" ]] || {
+    chmod +x "$(brew --prefix)/bin/unison-fsmonitor"
+}
+
+sudo pip3 list | awk '{ print $1 }' | grep -i '^macfsevents$' > /dev/null || {
+  sudo pip3 install macfsevents
+}
+
+which composer > /dev/null || {
+    brew install composer
+}
+
+[[ -f composer.lock ]] || composer install
+}
 # Function which find projects in folder
 list_projects(){
 echo "----------------------------------------------"
